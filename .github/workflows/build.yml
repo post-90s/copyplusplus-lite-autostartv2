@@ -30,10 +30,10 @@ jobs:
           }
 
       - name: Restore NuGet packages
-        run: nuget restore CopyPlusPlus-lite/CopyPlusPlus.sln
+        run: nuget restore CopyPlusPlus-litev2/CopyPlusPlus.sln
 
       - name: Build Release
-        run: msbuild CopyPlusPlus-lite/CopyPlusPlus.sln /p:Configuration=Release /p:Platform="Any CPU" /m
+        run: msbuild CopyPlusPlus-litev2/CopyPlusPlus.sln /p:Configuration=Release /p:Platform="Any CPU" /m
 
       - name: Package output
         shell: powershell
