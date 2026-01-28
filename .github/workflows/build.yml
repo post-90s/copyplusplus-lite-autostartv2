@@ -1,0 +1,57 @@
+name: build-wpf-netfx
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: windows-2019
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup NuGet
+        uses: nuget/setup-nuget@v2
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Install .NET Framework 4.6.1 Developer Pack (if needed)
+        shell: powershell
+        run: |
+          $targetingPack = "C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.6.1"
+          if (!(Test-Path $targetingPack)) {
+            choco install netfx-4.6.1-devpack -y
+          } else {
+            Write-Host ".NET Framework 4.6.1 targeting pack already present."
+          }
+
+      - name: Restore NuGet packages
+        run: nuget restore CopyPlusPlus-lite/CopyPlusPlus.sln
+
+      - name: Build Release
+        run: msbuild CopyPlusPlus-lite/CopyPlusPlus.sln /p:Configuration=Release /p:Platform="Any CPU" /m
+
+      - name: Package output
+        shell: powershell
+        run: |
+          $out = Get-ChildItem -Path . -Recurse -Directory -Filter "bin" |
+            ForEach-Object { Join-Path $_.FullName "Release" } |
+            Where-Object { Test-Path $_ } |
+            Select-Object -First 1
+
+          if (-not $out) { throw "Could not find bin\Release output folder." }
+
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          $zip = Join-Path "dist" "CopyPlusPlus-Release.zip"
+          if (Test-Path $zip) { Remove-Item $zip -Force }
+          Compress-Archive -Path (Join-Path $out "*") -DestinationPath $zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CopyPlusPlus-Release
+          path: dist/CopyPlusPlus-Release.zip
